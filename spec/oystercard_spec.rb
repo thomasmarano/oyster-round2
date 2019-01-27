@@ -3,6 +3,7 @@ require 'oystercard'
 describe Oystercard do
 
     subject(:oystercard) {Oystercard.new}
+    let(:entry_station) {double(:entry_station)}
 
     describe '#balance' do
         it 'has a balance of 0' do
@@ -35,14 +36,31 @@ describe Oystercard do
 
     describe '#touch_in' do
         it 'can touch the oystercard in' do
-            expect{oystercard.touch_in}.to change{oystercard.travelling}.from(false).to(true)
+            oystercard.top_up(10)
+            oystercard.touch_in(entry_station)
+            expect(oystercard).to be_in_journey
+        end
+
+        it 'raises an error if there are insufficient funds' do
+            expect{oystercard.touch_in(entry_station)}.to raise_error{'Insufficient funds'}
+        end
+
+        it 'records the entry station' do
+            oystercard.top_up(10)
+            expect{oystercard.touch_in(entry_station)}.to change{oystercard.entry_station}.from(nil).to(entry_station)
         end
     end
 
     describe '#touch_out' do
         it 'can touch the oystercard out' do
-            oystercard.touch_in
-            expect{oystercard.touch_out}.to change{oystercard.travelling}.from(true).to(false)
+            oystercard.top_up(10)
+            oystercard.touch_in(entry_station)
+            oystercard.touch_out
+            expect(oystercard).not_to be_in_journey
+        end
+
+        it 'deducts the minimum fare from oyster balance' do
+            expect{oystercard.touch_out}.to change{oystercard.balance}.by(-Oystercard::MIN)
         end
     end
 end
